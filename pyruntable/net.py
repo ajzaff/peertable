@@ -1,0 +1,2 @@
+class PeerNet(dict):
+    pass
