@@ -1,38 +1,44 @@
+from pyruntable.net import PeerNet
+import threading
 import socket
 import time
 
 
 class Peer(object):
-    def __init__(self, port, host=None):
+    def __init__(self, port, peer_id=None, host=None):
+        """
+
+        :param peer_id:
+        :param port:
+        :param host:
+        :return:
+        """
         if host is None:
             host = 'localhost'
-        self.sock = socket.socket()
+        if peer_id is None:
+            peer_id = PeerNet.new_id()
+        self._peer_thread = threading.Thread(
+            target=self._listen)
         self.host = socket.gethostbyname(host)
         self.port = port
         self.addr = (self.host, self.port)
+        self.id = peer_id
+        self.hex_id = hex(self.id)
+        self._peer_thread.start()
 
-    def connect(self, node):
+    def _listen(self, backlog=5):
         sock = socket.socket()
-        sock.connect(node.addr)
-        sock.close()
-
-    def clear(self):
-        self.sock = socket.socket()
-
-    def listen(self, backlog=5):
-        self.sock.bind(self.addr)
-        self.sock.listen(backlog)
+        sock.bind(self.addr)
+        sock.listen(backlog)
         Peer.log(
-            "Worker listening on %s:%s..." %
-            (self.host, self.port))
+            "Peer %s listening on %s:%s..." %
+            (self.hex_id, self.host, self.port))
         while True:
-            client, addr = self.sock.accept()
+            client, addr = sock.accept()
             Peer.log(
                 "Accepted connection from %s:%s..." %
                 tuple(addr))
-
             # Do something with the client connection...
-
             client.close()
 
     @classmethod
@@ -47,5 +53,5 @@ class Peer(object):
 
 
 if __name__ == '__main__':
-    worker = Peer(12345)
-    worker.listen()
+    worker = Peer(port=12347)
+    worker = Peer(port=12346)
