@@ -45,7 +45,6 @@ class Peer(Thread):
 
 
 class PeerKey(object):
-
     def __init__(self, value):
         self.value = value
         self.dump = None
@@ -70,8 +69,3 @@ class PeerKey(object):
             bits = RoutingTable.DEFAULT_BUCKETS
         bits = random.getrandbits(bits)
         return PeerKey(bits)
-
-
-if __name__ == '__main__':
-    worker = Peer(port=12347)
-    worker.join()
