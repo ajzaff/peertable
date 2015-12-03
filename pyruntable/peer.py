@@ -29,8 +29,10 @@ class Peer(Thread):
                  (self.host, self.port))
         while True:
             client, addr = sock.accept()
-            self.log("accepted connection from %s:%s..." % tuple(addr))
-            self.log("received data %s" % client.recv(1024))
+            self.log("accepted connection from %s:%s..." %
+                     tuple(addr))
+            self.log("received data %s" %
+                     client.recv(1024))
             client.close()
         self.log("shutting down...")
 

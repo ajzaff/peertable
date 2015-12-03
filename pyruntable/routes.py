@@ -4,8 +4,8 @@ class RoutingTable(tuple):
 
     def __new__(cls, *args, **kwargs):
         if args:
-            size = args[0]
+            buckets = args[0]
         else:
-            size = RoutingTable.DEFAULT_BUCKETS
-        table = [[] for _ in range(size)]
+            buckets = RoutingTable.DEFAULT_BUCKETS
+        table = [[] for _ in range(buckets)]
         return tuple.__new__(cls, table)
