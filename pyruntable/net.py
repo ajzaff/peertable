@@ -1,11 +1,9 @@
-from pyruntable import defaults
-import random
+from routes import RoutingTable
 
 
-class PeerNet(dict):
+class PeerNet(object):
 
-    @classmethod
-    def new_id(cls, keysize=None):
-        if keysize is None:
-            keysize = defaults.DEFAULT_KEY_SIZE
-        return random.getrandbits(keysize)
+    def __init__(self, buckets=None):
+        if buckets is None:
+            buckets = RoutingTable.DEFAULT_BUCKETS
+        self.buckets = buckets
