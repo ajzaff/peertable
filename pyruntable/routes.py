@@ -1,6 +1,6 @@
 class RoutingTable(tuple):
 
-    DEFAULT_BUCKETS = 128
+    DEFAULT_BUCKETS = 160
 
     def __new__(cls, *args, **kwargs):
         if args:

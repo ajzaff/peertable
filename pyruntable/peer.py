@@ -48,22 +48,53 @@ class Peer(Thread):
 
 class PeerKey(object):
     def __init__(self, value):
-        self.value = value
-        self.dump = None
+        self._buckets = len(value)
+        self._value = value
+        self._dump = None
+        self._pfx = None
 
     def __int__(self):
-        return self.value
+        return self._value
 
     def __xor__(self, other):
-        return self.value ^ other.value
+        return self._value ^ other.value
 
     def __ixor__(self, other):
-        return self.value ^ other.value
+        return self._value ^ other.value
 
     def __str__(self):
-        if not self.dump:
-            self.dump = hex(self.value)
-        return self.dump
+        if not self._dump:
+            self._dump = hex(self._value)
+        return self._dump
+
+    def __len__(self):
+        return self._buckets
+
+    def getprefix(self):
+        if self._pfx is None:
+            i = 0
+            while i < self._buckets:
+                j = 0
+                while j < 8:
+                    bits = self._value >> (7 - j)
+                    if bits & 0x1 != 0:
+                        self._pfx = i * 8 + j
+                        return self._pfx
+                    j += 1
+                i += 1
+            self._pfx = self._buckets * 8 - 1
+        return self._pfx
+
+    value = property(fget=__int__, fset=None, fdel=None,
+                     doc='(int) key value')
+    buckets = property(fget=__len__, fset=None, fdel=None,
+                        doc='(int) key length (bits)')
+    dump = property(fget=__str__, fset=None, fdel=None,
+                    doc='(str) key hex dump')
+    prefix = property(fget=getprefix, fset=None, fdel=None,
+                      doc='(int) prefix; a number of leading zeros')
+
+
 
     @classmethod
     def random(cls, bits=None):

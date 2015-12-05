@@ -21,5 +21,9 @@ class PeerNet(dict):
         super(PeerNet, self).update(other=other)
 
     def setdefault(self, key, default=None):
-        raise NotImplementedError(
-            'setdefault is not implemented')
+        if key not in self:
+            # TODO: register ``key'' to the network.
+            pass
+        return super(PeerNet, self) \
+            .setdefault(key, default=default)
+
