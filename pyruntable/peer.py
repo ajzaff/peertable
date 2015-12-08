@@ -32,14 +32,17 @@ class Peer(Thread):
     def address(self):
         return self._addr
 
+    @property
+    def key(self):
+        return self.address.key
+
     @classmethod
     def time(cls):
         return time.time()
 
     def log(self, message, *args):
         ptime = time.ctime(Peer.time())
-        print("[%s] Peer %s %s" %
-              (ptime, self.key, message))
+        print("[%s] Peer %s %s" % (ptime, self.address.key, message))
 
 
 class PeerAddress(object):
@@ -64,27 +67,25 @@ class PeerAddress(object):
         return self._port
 
     @property
-    def id(self):
+    def key(self):
         return self._id
 
 
-class PeerKey(object):
-    def __init__(self, value, buckets=None):
+class PeerKey(int):
+
+    def __init__(self, value, buckets=None, base=10):
+        super(PeerKey, self).__init__()
         if buckets is None:
             buckets = RoutingTable.DEFAULT_BUCKETS
         self._buckets = buckets
-        self._value = value
+        self._prefix = None
         self._dump = None
-        self._pfx = None
 
-    def __int__(self):
-        return self.value
-
-    def __xor__(self, other):
-        return self.value ^ other.value
-
-    def __ixor__(self, other):
-        return self.value ^ other.value
+    def __new__(cls, value, buckets=None, base=10):
+        if base == 10:
+            return int.__new__(cls, value)
+        else:
+            return int.__new__(cls, value, base=base)
 
     def __repr__(self):
         return self.__str__()
@@ -95,9 +96,11 @@ class PeerKey(object):
     def __len__(self):
         return self._buckets
 
-    @property
-    def value(self):
-        return self._value
+    def __xor__(self, other):
+        return PeerKey(int(self) ^ int(other))
+
+    def __ixor__(self, other):
+        return PeerKey(int(self) ^ int(other))
 
     @property
     def buckets(self):
@@ -105,22 +108,22 @@ class PeerKey(object):
 
     @property
     def dump(self):
-        if not self._dump:
-            self._dump = hex(self.value)
+        if self._dump is None:
+            self._dump = hex(self)
         return self._dump
 
     @property
     def prefix(self):
-        if self._pfx is None:
-            digits = str(self._value)
+        if self._prefix is None:
+            digits = str(int(self))
             for i, d in enumerate(digits):
                 d = int(d)
                 for j in range(8):
                     if (d >> (7 - j)) & 0x1 != 0:
-                        self._pfx = i * 8 + j
-                        return self._pfx
-            self._pfx = self._buckets * 8 - 1
-        return self._pfx
+                        self._prefix = i * 8 + j
+                        return self._prefix
+            self._prefix = self.buckets * 8 - 1
+        return self._prefix
 
     @classmethod
     def random(cls, bits=None):
