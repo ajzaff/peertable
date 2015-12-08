@@ -79,8 +79,6 @@ class PeerKey(object):
             digits = str(self._value)
             for i, d in enumerate(digits):
                 d = int(d)
-                print(bin(d))
-                print('---')
                 for j in range(8):
                     if (d >> (7 - j)) & 0x1 != 0:
                         self._pfx = i * 8 + j
@@ -99,8 +97,3 @@ class PeerKey(object):
     buckets = property(fget=__len__, doc='(int) key length (bits)')
     dump = property(fget=__str__, doc='(str) key hex dump')
     prefix = property(fget=getprefix, doc='(int) prefix; a number of leading zeros')
-
-if __name__ == '__main__':
-    n = 10345<<1024
-    key = PeerKey(n)
-    print(key.prefix)
