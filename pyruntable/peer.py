@@ -7,26 +7,18 @@ import time
 
 class Peer(Thread):
     def __init__(self, port,
-                 peer_id=None,
+                 pid=None,
                  host=None,
                  backlog=5):
         Thread.__init__(self)
-        if host is None:
-            host = 'localhost'
-        if peer_id is None:
-            peer_id = PeerKey.random()
-        self.host = socket.gethostbyname(host)
-        self.port = port
-        self.addr = (self.host, self.port)
+        self._addr = PeerAddress(port, pid=pid, host=host)
         self.backlog = backlog
-        self.key = peer_id
 
     def run(self):
         sock = socket.socket()
-        sock.bind(self.addr)
+        sock.bind(self._addr)
         sock.listen(self.backlog)
-        self.log("started listening on %s:%s..." %
-                 (self.host, self.port))
+        self.log("started listening on %s..." % self._addr)
         while True:
             client, addr = sock.accept()
             self.log("accepted connection from %s:%s..." %
@@ -35,6 +27,10 @@ class Peer(Thread):
                      client.recv(1024))
             client.close()
         self.log("shutting down...")
+
+    @property
+    def address(self):
+        return self._addr
 
     @classmethod
     def time(cls):
@@ -46,35 +42,75 @@ class Peer(Thread):
               (ptime, self.key, message))
 
 
+class PeerAddress(object):
+    def __init__(self, port, pid=None, host=None):
+        if host is None:
+            host = 'localhost'
+        if pid is None:
+            pid = PeerKey.random()
+        self._id = pid
+        self._host = socket.gethostbyname(host)
+        self._port = port
+
+    def __str__(self):
+        return '%s%s' % (self.host, self.port)
+
+    @property
+    def host(self):
+        return self._host
+
+    @property
+    def port(self):
+        return self._port
+
+    @property
+    def id(self):
+        return self._id
+
+
 class PeerKey(object):
     def __init__(self, value, buckets=None):
         if buckets is None:
-            self._buckets = RoutingTable.DEFAULT_BUCKETS
+            buckets = RoutingTable.DEFAULT_BUCKETS
+        self._buckets = buckets
         self._value = value
         self._dump = None
         self._pfx = None
 
     def __int__(self):
-        return self._value
+        return self.value
 
     def __xor__(self, other):
-        return self._value ^ other.value
+        return self.value ^ other.value
 
     def __ixor__(self, other):
-        return self._value ^ other.value
+        return self.value ^ other.value
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
-        if not self._dump:
-            self._dump = hex(self._value)
-        return self._dump
+        return self.dump
 
     def __len__(self):
         return self._buckets
 
-    def getprefix(self):
+    @property
+    def value(self):
+        return self._value
+
+    @property
+    def buckets(self):
+        return self._buckets
+
+    @property
+    def dump(self):
+        if not self._dump:
+            self._dump = hex(self.value)
+        return self._dump
+
+    @property
+    def prefix(self):
         if self._pfx is None:
             digits = str(self._value)
             for i, d in enumerate(digits):
@@ -92,8 +128,3 @@ class PeerKey(object):
             bits = RoutingTable.DEFAULT_BUCKETS
         bits = random.getrandbits(bits)
         return PeerKey(bits)
-
-    value = property(fget=__int__, doc='(int) key value')
-    buckets = property(fget=__len__, doc='(int) key length (bits)')
-    dump = property(fget=__str__, doc='(str) key hex dump')
-    prefix = property(fget=getprefix, doc='(int) prefix; a number of leading zeros')

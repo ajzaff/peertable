@@ -14,16 +14,15 @@ class PeerNet(dict):
 
     def __setitem__(self, key, value):
         # TODO: register ``value'' to the network.
-        super(PeerNet, self).__setitem__(key, value)
+        self.setdefault(key, default=value)
 
     def update(self, other=None, **kwargs):
         # TODO: register all ``other'' to the network.
-        super(PeerNet, self).update(other=other)
+        super(PeerNet, self).update(other=other, **kwargs)
 
     def setdefault(self, key, default=None):
         if key not in self:
             # TODO: register ``key'' to the network.
             pass
-        return super(PeerNet, self) \
-            .setdefault(key, default=default)
+        return super(PeerNet, self).setdefault(key, default=default)
 
