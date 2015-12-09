@@ -1,3 +1,4 @@
+from pyruntable import routes
 from threading import Thread
 import socket
 import random
@@ -5,18 +6,16 @@ import time
 
 
 class Peer(Thread):
-    def __init__(self, port,
-                 pid=None,
-                 host=None,
-                 backlog=5):
+    def __init__(self, port, key=None, host=None):
         Thread.__init__(self)
-        self._addr = PeerAddress(port, pid=pid, host=host)
-        self.backlog = backlog
+        self._addr = Address(port, key=key, host=host)
+        self._routes = routes.Table(address=self.address,
+                                    buckets=self.key.buckets)
 
     def run(self):
         sock = socket.socket()
         sock.bind(self._addr)
-        sock.listen(self.backlog)
+        sock.listen(5)
         self.log("started listening on %s..." % self._addr)
         while True:
             client, addr = sock.accept()
@@ -44,18 +43,24 @@ class Peer(Thread):
         print("[%s] Peer %s %s" % (ptime, self.address.key, message))
 
 
-class PeerAddress(object):
-    def __init__(self, port, pid=None, host=None):
+class Address(object):
+    def __init__(self, port, key=None, host=None):
         if host is None:
             host = 'localhost'
-        if pid is None:
-            pid = PeerKey()
-        self._id = pid
+        if key is None:
+            key = Key()
+        self._key = key
         self._host = socket.gethostbyname(host)
         self._port = port
 
+    def __repr__(self):
+        return self.__str__()
+
     def __str__(self):
-        return '%s%s' % (self.host, self.port)
+        return '%s@%s:%s' % (self.key, self.host, self.port)
+
+    def __lt__(self, other):
+        return self.key < other.key
 
     @property
     def host(self):
@@ -67,27 +72,27 @@ class PeerAddress(object):
 
     @property
     def key(self):
-        return self._id
+        return self._key
 
 
-class PeerKey(bytearray):
+class Key(bytearray):
 
     N = 20
 
     def __init__(self, value=None, buckets=N, prefix=None, rand=random):
         if value is None:
-            super(PeerKey, self).__init__(buckets)
+            super(Key, self).__init__(buckets)
             for i in range(buckets):
                 bits = rand.getrandbits(8)
                 if bits and not prefix:
-                    prefix = i * 8 + PeerKey._bp(bits)
+                    prefix = i * 8 + Key._bp(bits)
                 self[i] = bits
         elif isinstance(value, bytearray):
-            PeerKey._assert_length(value, buckets)
-            super(PeerKey, self).__init__(value)
+            Key._assert_length(value, buckets)
+            super(Key, self).__init__(value)
         elif isinstance(value, bytes):
-            PeerKey._assert_length(value, buckets, strict=False)
-            super(PeerKey, self).__init__(buckets)
+            Key._assert_length(value, buckets, strict=False)
+            super(Key, self).__init__(buckets)
             start = buckets - len(value)
             for i in range(buckets):
                 if i < start:
@@ -95,11 +100,11 @@ class PeerKey(bytearray):
                 else:
                     val = value[i - start]
                     if val and not prefix:
-                        prefix = i * 8 + PeerKey._bp(val)
+                        prefix = i * 8 + Key._bp(val)
                     self[i] = val
         elif isinstance(value, str):
-            PeerKey._assert_length(value, buckets, strict=False)
-            super(PeerKey, self).__init__(buckets)
+            Key._assert_length(value, buckets, strict=False)
+            super(Key, self).__init__(buckets)
             start = buckets - len(value)
             for i in range(buckets):
                 if i < start:
@@ -107,13 +112,19 @@ class PeerKey(bytearray):
                 else:
                     val = ord(value[i - start])
                     if val and not prefix:
-                        prefix = i * 8 + PeerKey._bp(val)
+                        prefix = i * 8 + Key._bp(val)
                     self[i] = val
         else:
             raise TypeError(
                 'value must be string or bytearray: found %s' %
                 type(value).__name__)
         self._prefix = prefix if prefix else buckets * 8 - 1
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return getattr(self, 'hex')()
 
     @classmethod
     def _bp(cls, byte):
@@ -135,15 +146,15 @@ class PeerKey(bytearray):
                 (buckets, value))
 
     def __xor__(self, other):
-        PeerKey._assert_length(self, other.buckets)
+        Key._assert_length(self, other.buckets)
         ba = bytearray(self.buckets)
         prefix = None
         for i, e in enumerate(other):
             val = self[i] ^ e
             if val and not prefix:
-                prefix = i * 8 + PeerKey._bp(val)
+                prefix = i * 8 + Key._bp(val)
             ba[i] = val
-        key = PeerKey(ba, buckets=self.buckets, prefix=prefix)
+        key = Key(ba, buckets=self.buckets, prefix=prefix)
         return key
 
     @property
