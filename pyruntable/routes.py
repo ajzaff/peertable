@@ -37,4 +37,3 @@ class Table(tuple):
                 pass
         else:
             bucket.insert(0, bucket.pop(i))
-

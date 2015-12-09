@@ -80,6 +80,8 @@ class Key(bytearray):
     N = 20
 
     def __init__(self, value=None, buckets=N, prefix=None, rand=random):
+        if buckets <= 0:
+            raise ValueError('buckets must be > 0: found %d' % buckets)
         if value is None:
             super(Key, self).__init__(buckets)
             for i in range(buckets):
@@ -119,31 +121,13 @@ class Key(bytearray):
                 'value must be string or bytearray: found %s' %
                 type(value).__name__)
         self._prefix = prefix if prefix else buckets * 8 - 1
+        self._hex = '0x%s' % self.raw[self.prefix // 4:]
 
     def __repr__(self):
-        return self.__str__()
+        return self._hex
 
     def __str__(self):
-        return getattr(self, 'hex')()
-
-    @classmethod
-    def _bp(cls, byte):
-        if isinstance(byte, str):
-            byte = ord(byte)
-        if isinstance(byte, bytes):
-            byte = byte[0]
-        for i in range(8):
-            if (byte >> (7 - i)) & 0x1 != 0:
-                return i
-        return 7
-
-    @classmethod
-    def _assert_length(cls, value, buckets, strict=True):
-        if (strict and len(value) != buckets) or \
-                (not strict and len(value) > buckets):
-            raise ValueError(
-                'cannot unpack key into %d buckets: %s' %
-                (buckets, value))
+        return self._hex
 
     def __xor__(self, other):
         Key._assert_length(self, other.buckets)
@@ -164,3 +148,26 @@ class Key(bytearray):
     @property
     def prefix(self):
         return self._prefix
+
+    @property
+    def raw(self):
+        return getattr(super(Key, self), 'hex')()
+
+    @classmethod
+    def _bp(cls, byte):
+        if isinstance(byte, str):
+            byte = ord(byte)
+        if isinstance(byte, bytes):
+            byte = byte[0]
+        for i in range(8):
+            if (byte >> (7 - i)) & 0x1 != 0:
+                return i
+        return 7
+
+    @classmethod
+    def _assert_length(cls, value, buckets, strict=True):
+        if (strict and len(value) != buckets) or \
+                (not strict and len(value) > buckets):
+            raise ValueError(
+                'cannot unpack key into %d buckets: %s' %
+                (buckets, value))

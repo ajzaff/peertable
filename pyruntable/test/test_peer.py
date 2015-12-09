@@ -17,14 +17,12 @@ class TestKey(unittest.TestCase):
         self.assertEqual(
             key, b'j6\xc2\xc2Ls\x0c\xbe\x1d'
                  b'\\B\xd1\xd5\xb6oiem\xd0\x9d')
-        self.assertEqual(key.buckets, Key.N)
-        self.assertEqual(key.prefix, 1)
-
-    def testInitStr(self):
-        key = Key(value='1234')
+        self.assertEqual(
+            str(key), '0x6a36c2c24c730cbe1d5'
+                      'c42d1d5b66f69656dd09d')
         self.assertEqual(len(key), Key.N)
         self.assertEqual(key.buckets, Key.N)
-        self.assertEqual(key.prefix, 130)
+        self.assertEqual(key.prefix, 1)
 
     def testInitBucketsDefaultRandom(self):
         rand = random.Random(1773)
@@ -32,15 +30,37 @@ class TestKey(unittest.TestCase):
         self.assertEqual(
             key, b'j6\xc2\xc2Ls\x0c\xbe\x1d'
                  b'\\B\xd1\xd5\xb6oiem\xd0\x9d')
+        self.assertEqual(
+            str(key), '0x6a36c2c24c730cbe1d5'
+                      'c42d1d5b66f69656dd09d')
         self.assertEqual(len(key), 20)
         self.assertEqual(key.buckets, 20)
         self.assertEqual(key.prefix, 1)
 
-    def testInitBytes(self):
-        key = Key(value=b'1234')
+    def testInitStr(self):
+        key = Key(value='1234')
+        self.assertEqual(str(key), '0x31323334')
         self.assertEqual(len(key), Key.N)
         self.assertEqual(key.buckets, Key.N)
         self.assertEqual(key.prefix, 130)
+
+    def testInitStrEmpty(self):
+        key = Key(value='')
+        self.assertEqual(str(key), '0x0')
+        self.assertEqual(len(key), Key.N)
+        self.assertEqual(key.buckets, Key.N)
+        self.assertEqual(key.prefix, 159)
+
+    def testInitBytes(self):
+        key = Key(value=b'1234')
+        self.assertEqual(str(key), '0x31323334')
+        self.assertEqual(len(key), Key.N)
+        self.assertEqual(key.buckets, Key.N)
+        self.assertEqual(key.prefix, 130)
+
+    def testInitNoBucketsExpectValueError(self):
+        with self.assertRaises(ValueError):
+            Key(buckets=0)
 
     def testInitStrBucketsExpectValueError(self):
         with self.assertRaises(ValueError):
@@ -57,6 +77,14 @@ class TestKey(unittest.TestCase):
     def testInitTypeError(self):
         with self.assertRaises(TypeError):
             Key(value=0)
+
+    def testStr(self):
+        key = Key(value='\x01')
+        self.assertEqual(str(key), '0x1')
+
+    def testRepr(self):
+        key = Key(value='\xff')
+        self.assertEqual(repr(key), '0xff')
 
     def testXor(self):
         key1 = Key(value='34')
