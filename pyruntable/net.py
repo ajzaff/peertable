@@ -1,11 +1,6 @@
-from routes import RoutingTable
-
-
 class PeerNet(dict):
-    def __init__(self, buckets=None):
+    def __init__(self, buckets):
         super(PeerNet, self).__init__()
-        if buckets is None:
-            buckets = RoutingTable.DEFAULT_BUCKETS
         self.buckets = buckets
 
     def __delitem__(self, key):

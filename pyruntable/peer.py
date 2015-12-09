@@ -1,4 +1,3 @@
-from pyruntable.routes import RoutingTable
 from threading import Thread
 import socket
 import random
@@ -40,7 +39,7 @@ class Peer(Thread):
     def time(cls):
         return time.time()
 
-    def log(self, message, *args):
+    def log(self, message):
         ptime = time.ctime(Peer.time())
         print("[%s] Peer %s %s" % (ptime, self.address.key, message))
 
@@ -50,7 +49,7 @@ class PeerAddress(object):
         if host is None:
             host = 'localhost'
         if pid is None:
-            pid = PeerKey.random()
+            pid = PeerKey()
         self._id = pid
         self._host = socket.gethostbyname(host)
         self._port = port
@@ -71,124 +70,86 @@ class PeerAddress(object):
         return self._id
 
 
-class PeerKey(int):
+class PeerKey(bytearray):
 
-    def __init__(self, value, buckets=None, base=10):
-        super(PeerKey, self).__init__()
-        if buckets is None:
-            buckets = RoutingTable.DEFAULT_BUCKETS
-        self._buckets = buckets
-        self._prefix = None
+    N = 20
 
-    def __new__(cls, value, buckets=None, base=10):
-        if base == 10:
-            return int.__new__(cls, value)
+    def __init__(self, value=None, buckets=N, prefix=None, rand=random):
+        if value is None:
+            super(PeerKey, self).__init__(buckets)
+            for i in range(buckets):
+                bits = rand.getrandbits(8)
+                if bits and not prefix:
+                    prefix = i * 8 + PeerKey._bp(bits)
+                self[i] = bits
+        elif isinstance(value, bytearray):
+            PeerKey._assert_length(value, buckets)
+            super(PeerKey, self).__init__(value)
+        elif isinstance(value, bytes):
+            PeerKey._assert_length(value, buckets, strict=False)
+            super(PeerKey, self).__init__(buckets)
+            start = buckets - len(value)
+            for i in range(buckets):
+                if i < start:
+                    self[i] = 0
+                else:
+                    val = value[i - start]
+                    if val and not prefix:
+                        prefix = i * 8 + PeerKey._bp(val)
+                    self[i] = val
+        elif isinstance(value, str):
+            PeerKey._assert_length(value, buckets, strict=False)
+            super(PeerKey, self).__init__(buckets)
+            start = buckets - len(value)
+            for i in range(buckets):
+                if i < start:
+                    self[i] = 0
+                else:
+                    val = ord(value[i - start])
+                    if val and not prefix:
+                        prefix = i * 8 + PeerKey._bp(val)
+                    self[i] = val
         else:
-            return int.__new__(cls, value, base=base)
+            raise TypeError(
+                'value must be string or bytearray: found %s' %
+                type(value).__name__)
+        self._prefix = prefix if prefix else buckets * 8 - 1
 
-    def __repr__(self):
-        return self.dump
+    @classmethod
+    def _bp(cls, byte):
+        if isinstance(byte, str):
+            byte = ord(byte)
+        if isinstance(byte, bytes):
+            byte = byte[0]
+        for i in range(8):
+            if (byte >> (7 - i)) & 0x1 != 0:
+                return i
+        return 7
 
-    def __str__(self):
-        return self.dump
-
-    def __len__(self):
-        return self._buckets
+    @classmethod
+    def _assert_length(cls, value, buckets, strict=True):
+        if (strict and len(value) != buckets) or \
+                (not strict and len(value) > buckets):
+            raise ValueError(
+                'cannot unpack key into %d buckets: %s' %
+                (buckets, value))
 
     def __xor__(self, other):
-        return PeerKey(int(self).__xor__(int(other)))
-
-    def __ixor__(self, other):
-        return PeerKey(int(self).__xor__(int(other)))
-
-    def __and__(self, other):
-        return PeerKey(int(self).__and__(int(other)))
-
-    def __iand__(self, other):
-        return PeerKey(int(self).__and__(int(other)))
-
-    def __abs__(self):
-        return PeerKey(int(self).__abs__())
-
-    def __add__(self, other):
-        return PeerKey(int(self).__add__(int(other)))
-
-    def __or__(self, other):
-        return PeerKey(int(self).__or__(int(other)))
-
-    def __ior__(self, other):
-        return PeerKey(int(self).__or__(int(other)))
-
-    def __sub__(self, other):
-        return PeerKey(int(self).__sub__(int(other)))
-
-    def __isub__(self, other):
-        return PeerKey(int(other).__sub__(int(self)))
-
-    def __divmod__(self, other):
-        return self.__truediv__(other), self.__mod__(int(other))
-
-    def __truediv__(self, other):
-        return self.__floordiv__(other)
-
-    def __itruediv__(self, other):
-        return self.__ifloordiv__(other)
-
-    def __floordiv__(self, other):
-        return PeerKey(int(self).__floordiv__(int(other)))
-
-    def __ifloordiv__(self, other):
-        return PeerKey(int(other).__floordiv__(int(self)))
-
-    def __imod__(self, other):
-        return int(other).__mod__(int(self))
-
-    def __neg__(self):
-        return PeerKey(int(self).__neg__())
-
-    def __pow__(self, power, modulo=None):
-        if modulo is None:
-            return int(self).__pow__(power)
-        else:
-            x = int(self)
-            number = 1
-            while power:
-                if power & 1:
-                    number = number * x % modulo
-                power >>= 1
-                x = (x * x) % modulo
-            return number
-
-    def __mul__(self, other):
-        return PeerKey(int(self).__mul__(int(other)))
-
-    def __imul__(self, other):
-        return PeerKey(int(self).__mul__(int(other)))
+        PeerKey._assert_length(self, other.buckets)
+        ba = bytearray(self.buckets)
+        prefix = None
+        for i, e in enumerate(other):
+            val = self[i] ^ e
+            if val and not prefix:
+                prefix = i * 8 + PeerKey._bp(val)
+            ba[i] = val
+        key = PeerKey(ba, buckets=self.buckets, prefix=prefix)
+        return key
 
     @property
     def buckets(self):
-        return self._buckets
-
-    @property
-    def dump(self):
-        return hex(int(self))
+        return len(self)
 
     @property
     def prefix(self):
-        if self._prefix is None:
-            digits = str(int(self))
-            for i, d in enumerate(digits):
-                d = int(d)
-                for j in range(8):
-                    if (d >> (7 - j)) & 0x1 != 0:
-                        self._prefix = i * 8 + j
-                        return self._prefix
-            self._prefix = self.buckets * 8 - 1
         return self._prefix
-
-    @classmethod
-    def random(cls, bits=None):
-        if bits is None:
-            bits = RoutingTable.DEFAULT_BUCKETS
-        bits = random.getrandbits(bits)
-        return PeerKey(bits)
