@@ -141,6 +141,17 @@ class Key(bytearray):
         key = Key(ba, buckets=self.buckets, prefix=prefix)
         return key
 
+    def rprefix(self, other):
+        Key._assert_length(self, other.buckets)
+        i = min(self.prefix, other.prefix) // 4
+        while i < self.buckets:
+            e = other[i]
+            val = self[i] ^ e
+            if val:
+                return i * 8 + Key._bp(val)
+            i += 1
+        return self.buckets * 8 - 1
+
     @property
     def buckets(self):
         return len(self)

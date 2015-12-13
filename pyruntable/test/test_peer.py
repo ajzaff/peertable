@@ -58,6 +58,13 @@ class TestKey(unittest.TestCase):
         self.assertEqual(key.buckets, Key.N)
         self.assertEqual(key.prefix, 130)
 
+    def testInitBytesEmpty(self):
+        key = Key(value=b'')
+        self.assertEqual(str(key), '0x0')
+        self.assertEqual(len(key), Key.N)
+        self.assertEqual(key.buckets, Key.N)
+        self.assertEqual(key.prefix, 159)
+
     def testInitNoBucketsExpectValueError(self):
         with self.assertRaises(ValueError):
             Key(buckets=0)
@@ -101,14 +108,34 @@ class TestKey(unittest.TestCase):
             key2 = Key(buckets=2)
             key1 ^ key2
 
+    def testRelativePrefix(self):
+        key1 = Key(value='34', buckets=2)
+        key2 = Key(value='12', buckets=2)
+        res = key1.rprefix(key2)
+        res2 = (key1 ^ key2).prefix
+        self.assertEqual(res, 6)
+        self.assertEqual(res, res2)
+
     def testBytePrefixerStr(self):
         p = Key._bp('a')
         self.assertEqual(p, 1)
+
+    def testBytePrefixerZeroStr(self):
+        p = Key._bp('\x00')
+        self.assertEqual(p, 7)
 
     def testBytePrefixerBytes(self):
         p = Key._bp(b'9')
         self.assertEqual(p, 2)
 
+    def testBytePrefixerZeroBytes(self):
+        p = Key._bp(b'\x00')
+        self.assertEqual(p, 7)
+
     def testBytePrefixerInt(self):
+        p = Key._bp(255)
+        self.assertEqual(p, 0)
+
+    def testBytePrefixerZeroInt(self):
         p = Key._bp(0)
         self.assertEqual(p, 7)

@@ -23,7 +23,7 @@ class Table(tuple):
         return self._address
 
     def update(self, contact):
-        prefix = (self.address.key ^ contact.key).prefix
+        prefix = self.address.key.rprefix(contact.key)
         bucket = super(Table, self).__getitem__(prefix)
         try:
             i = bucket.index(self.address.key)
