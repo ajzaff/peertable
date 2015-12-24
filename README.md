@@ -1,3 +1,3 @@
-## pyRuntable
+## pyruntable
 
-Python Distributed Hash Table (DHT)
+Python Kademlia Distributed Hash Table (DHT)
