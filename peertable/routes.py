@@ -1,6 +1,3 @@
-from pyruntable import peer
-
-
 class Table(tuple):
 
     def __init__(self, address, buckets=20):
