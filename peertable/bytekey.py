@@ -1,36 +1,68 @@
 import random
 
 
-class Key(int):
-
-    rand = random.Random()
+class ByteKey(bytearray):
 
     def __init__(self, value=None, buckets=20, prefix=None, rand=None):
         if buckets <= 0:
             raise ValueError('buckets must be > 0: found %d' % buckets)
         if rand is None:
-            rand = Key.rand
+            rand = random.Random()
+        if isinstance(value, int):
+            buckets = value
+            value = None
         if value is None:
             self._init_none(buckets, rand, prefix)
-        elif isinstance(value, int):
-            self._init_none(buckets, rand, prefix)
+        elif isinstance(value, bytearray):
+            self._init_bytearray(value, buckets)
+        elif isinstance(value, bytes):
+            self._init_bytes(value, buckets, prefix)
+        elif isinstance(value, str):
+            self._init_str(value, buckets, prefix)
         else:
-            super(Key, self).__init__()
+            super(ByteKey, self).__init__()
             raise TypeError(
-                    'value must be string or bytearray: found %s' %
-                    type(value).__name__)
+                'value must be string or bytearray: found %s' %
+                type(value).__name__)
         self._prefix = prefix if prefix else buckets * 8 - 1
 
-    def __new__(cls, value=None, buckets=20, prefix=None, rand=None):
-        return super(Key, cls).__new__()
-
     def _init_none(self, buckets, rand, prefix):
-        super(Key, self).__init__(buckets)
+        super(ByteKey, self).__init__(buckets)
         for i in range(buckets):
             bits = rand.getrandbits(8)
             if bits and not prefix:
-                prefix = i * 8 + Key._bp(bits)
+                prefix = i * 8 + ByteKey._bp(bits)
             self[i] = bits
+
+    def _init_bytearray(self, value, buckets):
+        ByteKey._assert_length(value, buckets)
+        super(ByteKey, self).__init__(value)
+
+    def _init_bytes(self, value, buckets, prefix):
+        ByteKey._assert_length(value, buckets, strict=False)
+        super(ByteKey, self).__init__(buckets)
+        start = buckets - len(value)
+        for i in range(buckets):
+            if i < start:
+                self[i] = 0
+            else:
+                val = value[i - start]
+                if val and not prefix:
+                    prefix = i * 8 + ByteKey._bp(val)
+                self[i] = val
+
+    def _init_str(self, value, buckets, prefix):
+        ByteKey._assert_length(value, buckets, strict=False)
+        super(ByteKey, self).__init__(buckets)
+        start = buckets - len(value)
+        for i in range(buckets):
+            if i < start:
+                self[i] = 0
+            else:
+                val = ord(value[i - start])
+                if val and not prefix:
+                    prefix = i * 8 + ByteKey._bp(val)
+                self[i] = val
 
     def __repr__(self):
         return self.raw
@@ -39,7 +71,7 @@ class Key(int):
         return self.raw
 
     def __xor__(self, other):
-        Key._assert_length(self, other.buckets)
+        ByteKey._assert_length(self, other.buckets)
         i = min(self.prefix, other.prefix) // 4
         ba = bytearray(self.buckets)
         prefix = None
@@ -47,20 +79,20 @@ class Key(int):
             e = other[i]
             val = self[i] ^ e
             if val and not prefix:
-                prefix = i * 8 + Key._bp(val)
+                prefix = i * 8 + ByteKey._bp(val)
             ba[i] = val
             i += 1
-        key = Key(ba, buckets=self.buckets, prefix=prefix)
+        key = ByteKey(ba, buckets=self.buckets, prefix=prefix)
         return key
 
     def rprefix(self, other):
-        Key._assert_length(self, other.buckets)
+        ByteKey._assert_length(self, other.buckets)
         i = min(self.prefix, other.prefix) // 4
         while i < self.buckets:
             e = other[i]
             val = self[i] ^ e
             if val:
-                return i * 8 + Key._bp(val)
+                return i * 8 + ByteKey._bp(val)
             i += 1
         return self.buckets * 8 - 1
 

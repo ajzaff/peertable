@@ -1,4 +1,4 @@
-import peertable.key
+import peertable.bytekey
 import socket
 
 
@@ -7,7 +7,7 @@ class Address(object):
         if host is None:
             host = 'localhost'
         if key is None:
-            key = peertable.key.Key()
+            key = peertable.bytekey.ByteKey()
         self._host = socket.gethostbyname(host)
         self._port = port
         self._key = key
